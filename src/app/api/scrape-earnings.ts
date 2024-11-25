@@ -1,4 +1,4 @@
-// pages/api/scrape-earnings.js
+import { NextApiRequest, NextApiResponse } from "next";
 import { Builder, By, until } from "selenium-webdriver";
 import chrome from "selenium-webdriver/chrome";
 
@@ -10,7 +10,10 @@ interface EarningsRow {
   actual: string;
 }
 
-export default async function handler(req: Request, res: Response) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   let driver;
   try {
     const options = new chrome.Options();
