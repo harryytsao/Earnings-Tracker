@@ -8,11 +8,16 @@ import {
 } from "@/components/ui/table"
 
 type Earning = {
-    date: string
-    time: string
-    company: string
     symbol: string
-    estimatedEPS: number
+    name: string
+    time: string
+    reportDate: string
+    lastYearRptDt: string
+    lastYearEPS: string
+    epsForecast: string
+    fiscalQuarterEnding: string
+    marketCap: string
+    noOfEsts: string
 }
 
 export default function EarningsTable({ data }: { data: Earning[] }) {
@@ -20,21 +25,25 @@ export default function EarningsTable({ data }: { data: Earning[] }) {
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Company</TableHead>
                     <TableHead>Symbol</TableHead>
-                    <TableHead className="text-right">Estimated EPS</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Report Date</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead className="text-right">Last Year EPS</TableHead>
+                    <TableHead className="text-right">Forecast EPS</TableHead>
+                    <TableHead className="text-right">Market Cap</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {data.map((earning) => (
-                    <TableRow key={`${earning.symbol}-${earning.date}-${earning.time}`}>
+                    <TableRow key={`${earning.symbol}-${earning.reportDate}`}>
                         <TableCell>{earning.symbol}</TableCell>
-                        <TableCell>{earning.date}</TableCell>
-                        <TableCell>{earning.time}</TableCell>
-                        <TableCell>{earning.company}</TableCell>
-                        <TableCell className="text-right">{earning.estimatedEPS.toFixed(2)}</TableCell>
+                        <TableCell>{earning.name}</TableCell>
+                        <TableCell>{earning.reportDate}</TableCell>
+                        <TableCell>{earning.time.replace('time-', '')}</TableCell>
+                        <TableCell className="text-right">{earning.lastYearEPS}</TableCell>
+                        <TableCell className="text-right">{earning.epsForecast}</TableCell>
+                        <TableCell className="text-right">{earning.marketCap}</TableCell>
                     </TableRow>
                 ))}
             </TableBody>
