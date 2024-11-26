@@ -150,11 +150,11 @@ export default function EarningsTable({ data }: { data: Earning[] }) {
                                 </TableCell>
                                 <TableCell>{earning.symbol}</TableCell>
                                 <TableCell>{earning.companyName}</TableCell>
-                                <TableCell className="text-right">{earning.lastYearEps}</TableCell>
-                                <TableCell className="text-right">{earning.estimatedEps}</TableCell>
-                                <TableCell>{earning.fiscalQuarterEnding}</TableCell>
-                                <TableCell className="text-right">{earning.marketCap}</TableCell>
-                                <TableCell className="text-right">{earning.numberOfEstimates}</TableCell>
+                                <TableCell className="text-center">{earning.lastYearEps}</TableCell>
+                                <TableCell className="text-center">{earning.estimatedEps}</TableCell>
+                                <TableCell className="text-center">{earning.fiscalQuarterEnding}</TableCell>
+                                <TableCell className="text-center">{earning.marketCap}</TableCell>
+                                <TableCell className="text-center">{earning.numberOfEstimates}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
