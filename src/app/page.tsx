@@ -21,16 +21,25 @@ export default function Home() {
   const fetchEarnings = async () => {
     try {
       const res = await fetch("/api/fetch-earnings");
-      if (!res.ok) throw new Error("Failed to fetch earnings");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
-      const { data } = await res.json();
-      console.log("Fetched earnings data:", data);
-      setState(prev => ({ ...prev, earningsData: data, isLoading: false }));
-    } catch (error) {
-      console.error("Error fetching earnings:", error);
+      const { success, data, error } = await res.json();
+
+      if (!success) {
+        throw new Error(error || 'Failed to fetch earnings');
+      }
+
       setState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Unknown error",
+        earningsData: data,
+        isLoading: false
+      }));
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Failed to fetch earnings data",
         isLoading: false
       }));
     }
@@ -145,7 +154,7 @@ export default function Home() {
             onClick={handleAuth}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
           >
-            {session ? 'Logout' : 'Login with GitHub'}
+            {session ? 'Logout' : 'Login'}
           </button>
         </div>
       </div>
