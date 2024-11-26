@@ -12,19 +12,25 @@ export async function GET() {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        watchedEarnings: true,
+    const watchedEarnings = await prisma.watchedEarning.findMany({
+      where: {
+        user: { email: session.user.email },
+      },
+      select: {
+        symbol: true,
+        reportDate: true,
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ watchedEarnings });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("rate limit")) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
     }
 
-    return NextResponse.json({ watchedEarnings: user.watchedEarnings });
-  } catch (error) {
     console.error("Error fetching watchlist:", error);
     return NextResponse.json(
       { error: "Failed to fetch watchlist" },
@@ -53,13 +59,28 @@ export async function POST(request: Request) {
     }
 
     if (action === "add") {
-      await prisma.watchedEarning.create({
-        data: {
-          userId: user.id,
-          symbol: earning.symbol,
-          reportDate: earning.reportDate,
+      // First check if the entry already exists
+      const existingWatch = await prisma.watchedEarning.findUnique({
+        where: {
+          userId_symbol_reportDate: {
+            userId: user.id,
+            symbol: earning.symbol,
+            reportDate: earning.reportDate,
+          },
         },
       });
+
+      // Only create if it doesn't exist
+      if (!existingWatch) {
+        await prisma.watchedEarning.create({
+          data: {
+            userId: user.id,
+            symbol: earning.symbol,
+            reportDate: earning.reportDate,
+          },
+        });
+      }
+      // If it exists, we can silently succeed since the end state is what the user wanted
     } else if (action === "remove") {
       await prisma.watchedEarning.deleteMany({
         where: {

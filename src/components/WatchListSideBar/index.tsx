@@ -47,7 +47,7 @@ export default function WatchListSideBar({ isOpen, onClose, watchedEarnings }: W
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-semibold">{earning.symbol}</h3>
                                         <span className="text-sm text-gray-500">
-                                            {new Date(earning.reportDate).toLocaleDateString()}
+                                            {earning.reportDate}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-600 dark:text-gray-300">

@@ -19,29 +19,42 @@ export default function Home() {
   const [watchedEarnings, setWatchedEarnings] = useState<Earning[]>([]);
 
   const fetchEarnings = async () => {
-    try {
-      const res = await fetch("/api/fetch-earnings");
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
+    const maxRetries = 3;
+    const backoffDelay = 1000; // 1 second
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const res = await fetch("/api/fetch-earnings");
+
+        if (res.status === 429) {
+          // Rate limited - wait and retry
+          await new Promise(resolve => setTimeout(resolve, backoffDelay * (attempt + 1)));
+          continue;
+        }
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const { success, data, error } = await res.json();
+
+        if (!success) {
+          throw new Error(error || 'Failed to fetch earnings');
+        }
+
+        setState(prev => ({
+          ...prev,
+          earningsData: data,
+          isLoading: false
+        }));
+        return; // Success - exit the retry loop
+      } catch (error) {
+        setState(prev => ({
+          ...prev,
+          error: error instanceof Error ? error.message : "Failed to fetch earnings data",
+          isLoading: false
+        }));
       }
-
-      const { success, data, error } = await res.json();
-
-      if (!success) {
-        throw new Error(error || 'Failed to fetch earnings');
-      }
-
-      setState(prev => ({
-        ...prev,
-        earningsData: data,
-        isLoading: false
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : "Failed to fetch earnings data",
-        isLoading: false
-      }));
     }
   };
 
@@ -148,7 +161,7 @@ export default function Home() {
             onClick={() => setIsSidebarOpen(true)}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
           >
-            Watched ({watchedEarnings.length})
+            WatchList ({watchedEarnings.length})
           </button>
           <button
             onClick={handleAuth}
