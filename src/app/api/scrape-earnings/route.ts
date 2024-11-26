@@ -1,32 +1,20 @@
 import { NextResponse } from "next/server";
-
-interface EarningsRow {
-  symbol: string;
-  name: string;
-  time: string;
-  reportDate: string;
-  lastYearRptDt: string;
-  lastYearEPS: string;
-  epsForecast: string;
-  fiscalQuarterEnding: string;
-  marketCap: string;
-  noOfEsts: string;
-}
+import { Earning } from "@/types/earnings";
 
 async function scrapeEarnings() {
   try {
-    // Get today and end of November
+    // Get today till end of december
     const today = new Date();
-    const endOfNovember = new Date(2024, 10, 30); // Month is 0-based, so 10 = November
+    const endOfDecember = new Date(2024, 11, 31); // Month is 0-based, so 11 = December
 
     // Format dates as YYYY-MM-DD
     const fromDate = today.toISOString().split("T")[0];
-    const toDate = endOfNovember.toISOString().split("T")[0];
+    const toDate = endOfDecember.toISOString().split("T")[0];
 
-    // Create an array of all dates between today and end of November
+    // Create an array of all dates between today and end of December
     const dates = [];
     let currentDate = new Date(fromDate);
-    while (currentDate <= endOfNovember) {
+    while (currentDate <= endOfDecember) {
       dates.push(currentDate.toISOString().split("T")[0]);
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -75,20 +63,20 @@ async function scrapeEarnings() {
     );
 
     // Flatten and format all results
-    const formattedData: EarningsRow[] = allData
+    const formattedData: Earning[] = allData
       .flat()
       .filter(Boolean)
       .map((row: any) => ({
-        symbol: row.symbol || "",
-        name: row.name || "",
-        time: row.timing || "",
-        reportDate: row.reportDate || "", // Include the report date
         lastYearRptDt: row.lastYearRptDt || "",
         lastYearEPS: row.lastYearEPS || "",
-        epsForecast: row.epsForecast || "",
-        fiscalQuarterEnding: row.fiscalQuarterEnding || "",
+        time: row.time || "time-not-supplied",
+        symbol: row.symbol || "",
+        name: row.name || "",
         marketCap: row.marketCap || "",
+        fiscalQuarterEnding: row.fiscalQuarterEnding || "",
+        epsForecast: row.epsForecast || "",
         noOfEsts: row.noOfEsts || "",
+        reportDate: row.reportDate || "",
       }));
 
     return formattedData;

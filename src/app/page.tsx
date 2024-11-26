@@ -3,21 +3,10 @@
 import EarningsTable from '@/components/EarningsTable'
 import { Button } from "@/components/ui/button"
 import { useState } from 'react'
-
-type EarningsData = {
-  symbol: string
-  name: string
-  time: string
-  lastYearRptDt: string
-  lastYearEPS: string
-  epsForecast: string
-  fiscalQuarterEnding: string
-  marketCap: string
-  noOfEsts: string
-}
+import { Earning } from '@/types/earnings'
 
 export default function Home() {
-  const [earningsData, setEarningsData] = useState<EarningsData[]>([]);
+  const [earningsData, setEarningsData] = useState<Earning[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,13 +29,13 @@ export default function Home() {
 
   return (
     <main className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">Upcoming Earnings</h1>
+      <h1 className="text-3xl font-bold mb-6">Upcoming Nasdaq Earnings</h1>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <Button
         onClick={handleScrapeEarnings}
         disabled={isLoading}
       >
-        {isLoading ? 'Loading...' : 'Scrape Earnings'}
+        {isLoading ? 'Loading...' : 'Retrieve Earnings'}
       </Button>
       {earningsData.length > 0 && (
         <div className="mt-4">
