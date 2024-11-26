@@ -5,13 +5,11 @@ import { useEffect, useState } from 'react'
 import { Earning } from '@/types/earnings'
 
 export default function Home() {
-  const [earningsData, setEarningsData] = useState<Earning[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchEarnings();
-  }, []);
+  const [state, setState] = useState({
+    earningsData: [] as Earning[],
+    isLoading: true,
+    error: null as string | null,
+  });
 
   const fetchEarnings = async () => {
     try {
@@ -19,31 +17,43 @@ export default function Home() {
       if (!res.ok) throw new Error("Failed to fetch earnings");
 
       const { data } = await res.json();
-      setEarningsData(data);
+      console.log("Fetched earnings data:", data);
+      setState(prev => ({ ...prev, earningsData: data, isLoading: false }));
     } catch (error) {
       console.error("Error fetching earnings:", error);
-      setError(error instanceof Error ? error.message : "Unknown error");
-    } finally {
-      setIsLoading(false);
+      setState(prev => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Unknown error",
+        isLoading: false
+      }));
     }
-  }
+  };
+
+  useEffect(() => {
+    fetchEarnings();
+  }, []);
+
+  const renderContent = () => {
+    const { error, isLoading, earningsData } = state;
+
+    if (error) return <p className="text-red-500 mb-4">{error}</p>;
+    if (isLoading) return <p className="text-gray-500">Loading earnings data...</p>;
+    if (earningsData.length === 0) return null;
+
+    return (
+      <div>
+        <p className="text-sm text-gray-500 mb-2">
+          Showing {earningsData.length} earnings reports
+        </p>
+        <EarningsTable data={earningsData} />
+      </div>
+    );
+  };
 
   return (
     <main className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Upcoming Nasdaq Earnings</h1>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      {isLoading ? (
-        <p className="text-gray-500">Loading earnings data...</p>
-      ) : (
-        earningsData.length > 0 && (
-          <div>
-            <p className="text-sm text-gray-500 mb-2">
-              Showing {earningsData.length} earnings reports
-            </p>
-            <EarningsTable data={earningsData} />
-          </div>
-        )
-      )}
+      {renderContent()}
     </main>
   )
 }

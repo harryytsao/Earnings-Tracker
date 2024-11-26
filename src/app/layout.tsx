@@ -3,8 +3,8 @@ import "./globals.css";
 // import Providers from './providers'
 
 export const metadata: Metadata = {
-  title: "Quartely Earnings Tracker",
-  description: "Track public company earnings",
+  title: "Nasdaq Earnings Tracker",
+  description: "Track upcoming Nasdaq earnings",
 };
 
 export default function RootLayout({

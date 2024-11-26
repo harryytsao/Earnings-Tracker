@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Earning } from "@/types/earnings";
+import { Earning, EarningTime } from "@/types/earnings";
 import { PrismaClient } from "@prisma/client";
 import { headers } from "next/headers";
 
@@ -10,14 +10,15 @@ let lastFetchTime = 0;
 async function fetchEarnings() {
   try {
     const today = new Date();
-    const endOfDecember = new Date(2024, 11, 31);
-    const fromDate = today.toISOString().split("T")[0];
+    console.log("Today's date:", today);
+    today.setHours(today.getHours() - 9);
+    const todayDateString = today.toISOString().split("T")[0];
 
     // Check if we already have data for today
     const existingData = await prisma.earnings.findFirst({
       where: {
         reportDate: {
-          gte: today.toISOString(),
+          gte: todayDateString,
         },
       },
       orderBy: {
@@ -25,14 +26,26 @@ async function fetchEarnings() {
       },
     });
 
-    // If we have data from today or a future date, return early
     if (existingData) {
       console.log("Recent data exists, skipping fetch");
+      console.log("Today's date string:", todayDateString);
       const allExistingData = await prisma.earnings.findMany({
         where: {
           reportDate: {
-            gte: today.toISOString(),
+            gte: todayDateString,
           },
+        },
+        select: {
+          symbol: true,
+          companyName: true,
+          reportDate: true,
+          estimatedEps: true,
+          lastYearReportDate: true,
+          time: true,
+          lastYearEps: true,
+          fiscalQuarterEnding: true,
+          marketCap: true,
+          numberOfEstimates: true,
         },
       });
       return allExistingData;
@@ -40,7 +53,8 @@ async function fetchEarnings() {
 
     // Create an array of all dates between today and end of December
     const dates = [];
-    let currentDate = new Date(fromDate);
+    const endOfDecember = new Date(2024, 11, 31);
+    let currentDate = new Date(todayDateString);
     while (currentDate <= endOfDecember) {
       dates.push(currentDate.toISOString().split("T")[0]);
       currentDate.setDate(currentDate.getDate() + 1);
@@ -94,16 +108,16 @@ async function fetchEarnings() {
       .flat()
       .filter(Boolean)
       .map((row: any) => ({
-        lastYearRptDt: row.lastYearRptDt || "",
-        lastYearEPS: row.lastYearEPS || "",
-        time: row.time || "time-not-supplied",
-        symbol: row.symbol || "",
-        name: row.name || "",
-        marketCap: row.marketCap || "",
-        fiscalQuarterEnding: row.fiscalQuarterEnding || "",
-        epsForecast: row.epsForecast || "",
-        noOfEsts: row.noOfEsts || "",
-        reportDate: row.reportDate || "",
+        symbol: String(row.symbol),
+        companyName: String(row.name),
+        reportDate: row.reportDate,
+        estimatedEps: row.epsForecast || null,
+        lastYearReportDate: row.lastYearRptDt || null,
+        time: (row.time || "time-not-supplied") as EarningTime,
+        lastYearEps: row.lastYearEPS || null,
+        fiscalQuarterEnding: row.fiscalQuarterEnding || null,
+        marketCap: row.marketCap || null,
+        numberOfEstimates: row.noOfEsts || null,
       }));
 
     // Store data in database
@@ -112,31 +126,31 @@ async function fetchEarnings() {
         return prisma.earnings.upsert({
           where: {
             symbol_reportDate: {
-              symbol: String(earning.symbol),
+              symbol: earning.symbol,
               reportDate: earning.reportDate,
             },
           },
           update: {
-            companyName: String(earning.name),
-            estimatedEps: earning.epsForecast,
-            time: String(earning.time),
-            lastYearReportDate: earning.lastYearRptDt,
-            lastYearEps: earning.lastYearEPS,
+            companyName: earning.companyName,
+            estimatedEps: earning.estimatedEps,
+            time: earning.time,
+            lastYearReportDate: earning.lastYearReportDate,
+            lastYearEps: earning.lastYearEps,
             fiscalQuarterEnding: earning.fiscalQuarterEnding,
             marketCap: earning.marketCap,
-            numberOfEstimates: String(earning.noOfEsts),
+            numberOfEstimates: earning.numberOfEstimates,
           },
           create: {
-            symbol: String(earning.symbol),
-            companyName: String(earning.name),
+            symbol: earning.symbol,
+            companyName: earning.companyName,
             reportDate: earning.reportDate,
-            estimatedEps: earning.epsForecast,
-            time: String(earning.time),
-            lastYearReportDate: earning.lastYearRptDt,
-            lastYearEps: earning.lastYearEPS,
+            estimatedEps: earning.estimatedEps,
+            time: earning.time,
+            lastYearReportDate: earning.lastYearReportDate,
+            lastYearEps: earning.lastYearEps,
             fiscalQuarterEnding: earning.fiscalQuarterEnding,
             marketCap: earning.marketCap,
-            numberOfEstimates: earning.noOfEsts,
+            numberOfEstimates: earning.numberOfEstimates,
           },
         });
       })

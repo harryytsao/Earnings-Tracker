@@ -10,32 +10,81 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Earning } from "@/types/earnings"
-import { Sun, Moon, Minus } from "lucide-react"
-import ScrollableDateHeader from "./ScrollableDateHeader" // Adjust the import path as needed
+import { Sun, Moon, Minus, ChevronsUpDown } from "lucide-react"
+import ScrollableDateHeader from "./ScrollableDateHeader"
+import { Button } from "@/components/ui/button"
+
+const getTimeIcon = (time: string | null) => {
+    switch (time) {
+        case 'time-pre-market':
+            return <Sun className="h-4 w-3" />;
+        case 'time-after-hours':
+            return <Moon className="h-4 w-3" />;
+        default:
+            return <Minus className="h-4 w-3" />;
+    }
+};
 
 export default function EarningsTable({ data }: { data: Earning[] }) {
-    const [selectedDate, setSelectedDate] = useState<string>(() => {
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        return `${tomorrow.getDate()} ${tomorrow.toLocaleString('default', { month: 'short' })}`
-    })
-
-    const getTimeIcon = (time: string) => {
-        switch (time) {
-            case 'time-pre-market':
-                return <Sun className="h-4 w-4" />;
-            case 'time-after-hours':
-                return <Moon className="h-4 w-4" />;
-            default:
-                return <Minus className="h-4 w-4" />;
-        }
+    const formatDate = (date: Date) => {
+        const localDate = new Date(date.toLocaleDateString('en-US'));
+        return `${localDate.getDate()} ${localDate.toLocaleString('default', { month: 'short' })}`
     };
 
-    const filteredData = data.filter(earning => {
-        const earningDate = new Date(earning.reportDate + 'T00:00:00')
-        const formattedEarningDate = `${earningDate.getDate()} ${earningDate.toLocaleString('default', { month: 'short' })}`
-        return formattedEarningDate === selectedDate
+    const [selectedDate, setSelectedDate] = useState<string>(() => {
+        const today = new Date();
+        return formatDate(today);
     })
+
+    const [sortConfig, setSortConfig] = useState<{
+        key: keyof Earning;
+        direction: 'asc' | 'desc';
+    } | null>(null);
+
+    const sortData = (data: Earning[]) => {
+        if (!sortConfig) {
+            // Default sort by market cap
+            return data.sort((a, b) => {
+                const marketCapA = parseFloat((a.marketCap ?? '0').replace(/[^0-9.-]+/g, ''));
+                const marketCapB = parseFloat((b.marketCap ?? '0').replace(/[^0-9.-]+/g, ''));
+                return marketCapB - marketCapA;
+            });
+        }
+
+        return [...data].sort((a, b) => {
+            if (sortConfig.key === 'marketCap') {
+                const marketCapA = parseFloat((a.marketCap ?? '0').replace(/[^0-9.-]+/g, ''));
+                const marketCapB = parseFloat((b.marketCap ?? '0').replace(/[^0-9.-]+/g, ''));
+                return sortConfig.direction === 'asc' ? marketCapA - marketCapB : marketCapB - marketCapA;
+            }
+
+            const aValue = a[sortConfig.key] ?? '';
+            const bValue = b[sortConfig.key] ?? '';
+
+            if (sortConfig.direction === 'asc') {
+                return String(aValue).localeCompare(String(bValue));
+            }
+            return String(bValue).localeCompare(String(aValue));
+        });
+    };
+
+    const handleSort = (key: keyof Earning) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return current.direction === 'asc'
+                    ? { key, direction: 'desc' }
+                    : null;
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+
+    const filteredAndSortedData = sortData(
+        data.filter(earning => {
+            const earningDate = new Date(earning.reportDate + 'T00:00:00');
+            return formatDate(earningDate) === selectedDate;
+        })
+    );
 
     return (
         <div className="space-y-4">
@@ -43,36 +92,74 @@ export default function EarningsTable({ data }: { data: Earning[] }) {
                 selectedDate={selectedDate}
                 onDateSelect={setSelectedDate}
             />
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Symbol</TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead className="text-right">Last Year EPS</TableHead>
-                        <TableHead className="text-right">Forecast EPS</TableHead>
-                        <TableHead>Fiscal Quarter Ending</TableHead>
-                        <TableHead className="text-right">Market Cap</TableHead>
-                        <TableHead className="text-right">Number of Estimates</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredData.map((earning) => (
-                        <TableRow key={`${earning.symbol}-${earning.reportDate}`}>
-                            <TableCell className="flex justify-center">
-                                {getTimeIcon(earning.time)}
-                            </TableCell>
-                            <TableCell>{earning.symbol}</TableCell>
-                            <TableCell>{earning.name}</TableCell>
-                            <TableCell className="text-right">{earning.lastYearEPS}</TableCell>
-                            <TableCell className="text-right">{earning.epsForecast}</TableCell>
-                            <TableCell>{earning.fiscalQuarterEnding}</TableCell>
-                            <TableCell className="text-right">{earning.marketCap}</TableCell>
-                            <TableCell className="text-right">{earning.noOfEsts}</TableCell>
+            {filteredAndSortedData.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                    No earnings reports scheduled for this date
+                </div>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => handleSort('time')}>
+                                    Time <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => handleSort('symbol')}>
+                                    Symbol <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => handleSort('companyName')}>
+                                    Company <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => handleSort('lastYearEps')}>
+                                    Last Year EPS <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => handleSort('estimatedEps')}>
+                                    Estimated EPS <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => handleSort('fiscalQuarterEnding')}>
+                                    Fiscal Quarter Ending <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => handleSort('marketCap')}>
+                                    Market Cap <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => handleSort('numberOfEstimates')}>
+                                    No. of Estimates <ChevronsUpDown className="ml-1 h-4 w-3" />
+                                </Button>
+                            </TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredAndSortedData.map((earning) => (
+                            <TableRow key={`${earning.symbol}-${earning.reportDate}`}>
+                                <TableCell className="flex justify-center">
+                                    {getTimeIcon(earning.time)}
+                                </TableCell>
+                                <TableCell>{earning.symbol}</TableCell>
+                                <TableCell>{earning.companyName}</TableCell>
+                                <TableCell className="text-right">{earning.lastYearEps}</TableCell>
+                                <TableCell className="text-right">{earning.estimatedEps}</TableCell>
+                                <TableCell>{earning.fiscalQuarterEnding}</TableCell>
+                                <TableCell className="text-right">{earning.marketCap}</TableCell>
+                                <TableCell className="text-right">{earning.numberOfEstimates}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
         </div>
     )
 }

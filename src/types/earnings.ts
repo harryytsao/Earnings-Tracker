@@ -5,13 +5,13 @@ export type EarningTime =
 
 export interface Earning {
   symbol: string;
-  name: string;
-  time: EarningTime;
+  companyName: string;
   reportDate: string;
-  lastYearRptDt: string;
-  lastYearEPS: string;
-  epsForecast: string;
-  fiscalQuarterEnding: string;
-  marketCap: string;
-  noOfEsts: string;
+  estimatedEps: string | null;
+  lastYearReportDate: string | null;
+  time: EarningTime;
+  lastYearEps: string | null;
+  fiscalQuarterEnding: string | null;
+  marketCap: string | null;
+  numberOfEstimates: string | null;
 }
