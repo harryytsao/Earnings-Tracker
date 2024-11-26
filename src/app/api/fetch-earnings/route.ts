@@ -1,15 +1,42 @@
 import { NextResponse } from "next/server";
 import { Earning } from "@/types/earnings";
+import { PrismaClient } from "@prisma/client";
+import { headers } from "next/headers";
 
-async function scrapeEarnings() {
+const prisma = new PrismaClient();
+const RATE_LIMIT_SECONDS = 43200; // 12 hours
+let lastFetchTime = 0;
+
+async function fetchEarnings() {
   try {
-    // Get today till end of december
     const today = new Date();
-    const endOfDecember = new Date(2024, 11, 31); // Month is 0-based, so 11 = December
-
-    // Format dates as YYYY-MM-DD
+    const endOfDecember = new Date(2024, 11, 31);
     const fromDate = today.toISOString().split("T")[0];
-    const toDate = endOfDecember.toISOString().split("T")[0];
+
+    // Check if we already have data for today
+    const existingData = await prisma.earnings.findFirst({
+      where: {
+        reportDate: {
+          gte: today.toISOString(),
+        },
+      },
+      orderBy: {
+        reportDate: "desc",
+      },
+    });
+
+    // If we have data from today or a future date, return early
+    if (existingData) {
+      console.log("Recent data exists, skipping fetch");
+      const allExistingData = await prisma.earnings.findMany({
+        where: {
+          reportDate: {
+            gte: today.toISOString(),
+          },
+        },
+      });
+      return allExistingData;
+    }
 
     // Create an array of all dates between today and end of December
     const dates = [];
@@ -79,6 +106,42 @@ async function scrapeEarnings() {
         reportDate: row.reportDate || "",
       }));
 
+    // Store data in database
+    await Promise.all(
+      formattedData.map(async (earning) => {
+        return prisma.earnings.upsert({
+          where: {
+            symbol_reportDate: {
+              symbol: String(earning.symbol),
+              reportDate: earning.reportDate,
+            },
+          },
+          update: {
+            companyName: String(earning.name),
+            estimatedEps: earning.epsForecast,
+            time: String(earning.time),
+            lastYearReportDate: earning.lastYearRptDt,
+            lastYearEps: earning.lastYearEPS,
+            fiscalQuarterEnding: earning.fiscalQuarterEnding,
+            marketCap: earning.marketCap,
+            numberOfEstimates: String(earning.noOfEsts),
+          },
+          create: {
+            symbol: String(earning.symbol),
+            companyName: String(earning.name),
+            reportDate: earning.reportDate,
+            estimatedEps: earning.epsForecast,
+            time: String(earning.time),
+            lastYearReportDate: earning.lastYearRptDt,
+            lastYearEps: earning.lastYearEPS,
+            fiscalQuarterEnding: earning.fiscalQuarterEnding,
+            marketCap: earning.marketCap,
+            numberOfEstimates: earning.noOfEsts,
+          },
+        });
+      })
+    );
+
     return formattedData;
   } catch (error) {
     console.error("Scraping error:", error);
@@ -88,7 +151,17 @@ async function scrapeEarnings() {
 
 export async function GET() {
   try {
-    const data = await scrapeEarnings();
+    // Check if enough time has passed since last fetch
+    const now = Date.now();
+    if (now - lastFetchTime < RATE_LIMIT_SECONDS * 1000) {
+      return NextResponse.json(
+        { success: false, message: "Rate limit exceeded" },
+        { status: 429 }
+      );
+    }
+
+    lastFetchTime = now;
+    const data = await fetchEarnings();
 
     return NextResponse.json(
       { success: true, data },

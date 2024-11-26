@@ -1,19 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-    id Int @id @default(autoincrement())
-    name String
-    createdAt DateTime @default(now())
-    messages Message[]
-}
+model Earnings {
+  id                   Int         @id @default(autoincrement())
+  symbol               String
+  companyName          String
+  reportDate           String
+  estimatedEps         String?
+  lastYearReportDate   String?
+  time                 String
+  lastYearEps          String?
+  fiscalQuarterEnding  String?
+  marketCap            String?
+  numberOfEstimates    String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-model Message {
-    id Int @id @default(autoincrement())
-    body String
-    createdAt DateTime @default(now())
-    userId Int
-    user User @relation(fields: [userId], references: [id])
+  @@unique([symbol, reportDate], name: "symbol_reportDate")
+  @@index([reportDate])
 }
