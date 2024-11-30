@@ -143,7 +143,7 @@ export default function EarningsTable({
             />
             {filteredAndSortedData.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                    No earnings reports scheduled for this date
+                    No earnings reports scheduled for {selectedDate}
                 </div>
             ) : (
                 <Table>
