@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NASDAQ Earnings Tracker
+
+A modern web application that helps users track and monitor upcoming NASDAQ earnings reports. Built with Next.js, TypeScript, and Prisma.
+
+## Features
+
+- 📊 Real-time earnings data display
+- 📅 Interactive date navigation with business day filtering
+- ⭐ Personal watchlist functionality
+- 🔒 GitHub authentication
+- 💬 Community discussion through comments
+- 🌓 Pre-market and after-hours earnings indicators
+- 📱 Responsive design
+- 🔄 Sortable data columns
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Authentication**: NextAuth.js with GitHub provider
+- **Database**: Prisma
+- **Styling**: Tailwind CSS
+- **UI Components**: Custom components with shadcn/ui
+- **Icons**: Lucide React
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+
+```bash
+git clone https://github.com/harryytsao/Earnings-Tracker.git
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up your environment variables in `.env.local`:
+
+```bash
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-here
+
+# GitHub OAuth
+GITHUB_ID=your-github-client-id
+GITHUB_SECRET=your-github-client-secret
+
+# Database
+DATABASE_URL=your-database-url
+```
+
+4. Run the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `/app` - Next.js app router pages and API routes
+- `/components` - Reusable React components
+- `/types` - TypeScript type definitions
+- `/lib` - Utility functions and shared libraries
+- `/prisma` - Database schema and migrations
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT License](LICENSE)
