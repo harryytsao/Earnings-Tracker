@@ -14,11 +14,11 @@ async function fetchEarnings() {
     today.setHours(today.getHours() - 9);
     const todayDateString = today.toISOString().split("T")[0];
 
-    // Check if we have data starting from January 1st, 2024
+    // Check if we have data starting from January 1st, 2025
     const existingData = await prisma.earnings.findFirst({
       where: {
         reportDate: {
-          gte: "2024-01-01",
+          gte: "2025-01-01",
         },
       },
       orderBy: {

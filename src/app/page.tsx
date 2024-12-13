@@ -20,14 +20,16 @@ export default function Home() {
 
   const fetchEarnings = async () => {
     const maxRetries = 3;
-    const backoffDelay = 1000; // 1 second
+    const backoffDelay = 1000;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const res = await fetch("/api/fetch-earnings");
 
+        console.log('API Response Status:', res.status);
+
         if (res.status === 429) {
-          // Rate limited - wait and retry
+          console.log('Rate limited, attempting retry:', attempt + 1);
           await new Promise(resolve => setTimeout(resolve, backoffDelay * (attempt + 1)));
           continue;
         }
@@ -38,6 +40,9 @@ export default function Home() {
 
         const { success, data, error } = await res.json();
 
+        console.log('Earnings data count:', data?.length);
+        console.log('Sample earnings:', data?.slice(0, 2));
+
         if (!success) {
           throw new Error(error || 'Failed to fetch earnings');
         }
@@ -47,8 +52,9 @@ export default function Home() {
           earningsData: data,
           isLoading: false
         }));
-        return; // Success - exit the retry loop
+        return;
       } catch (error) {
+        console.error('Fetch error:', error);
         setState(prev => ({
           ...prev,
           error: error instanceof Error ? error.message : "Failed to fetch earnings data",
