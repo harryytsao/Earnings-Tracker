@@ -14,11 +14,11 @@ async function fetchEarnings() {
     today.setHours(today.getHours() - 9);
     const todayDateString = today.toISOString().split("T")[0];
 
-    // Check if we already have data for today
+    // Check if we have data starting from January 1st, 2024
     const existingData = await prisma.earnings.findFirst({
       where: {
         reportDate: {
-          gte: todayDateString,
+          gte: "2024-01-01",
         },
       },
       orderBy: {
@@ -27,12 +27,11 @@ async function fetchEarnings() {
     });
 
     if (existingData) {
-      console.log("Recent data exists, skipping fetch");
-      console.log("Today's date string:", todayDateString);
+      console.log("Data exists from January 1st, skipping fetch");
       const allExistingData = await prisma.earnings.findMany({
         where: {
           reportDate: {
-            gte: todayDateString,
+            gte: "2024-01-01",
           },
         },
         select: {
@@ -51,11 +50,11 @@ async function fetchEarnings() {
       return allExistingData;
     }
 
-    // Create an array of all dates between today and end of December
+    // Create an array of all dates between today and end of January
     const dates = [];
-    const endOfDecember = new Date(2024, 11, 31);
+    const endOfJanuary = new Date(2025, 0, 31); // Month is 0-based, so 0 = January
     let currentDate = new Date(todayDateString);
-    while (currentDate <= endOfDecember) {
+    while (currentDate <= endOfJanuary) {
       dates.push(currentDate.toISOString().split("T")[0]);
       currentDate.setDate(currentDate.getDate() + 1);
     }
