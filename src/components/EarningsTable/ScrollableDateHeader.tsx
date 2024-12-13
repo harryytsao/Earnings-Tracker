@@ -26,9 +26,10 @@ export default function ScrollableDateHeader({ selectedDate, onDateSelect }: Scr
     const dates: DateItem[] = (() => {
         const result: DateItem[] = [];
         let currentDate = new Date();
+        const endDate = new Date(2025, 0, 31);
 
-        // Continue for 30 days (or any other number you prefer)
-        for (let i = 0; i < 30; i++) {
+        // Continue until we reach the end date
+        while (currentDate <= endDate) {
             // Skip weekends (0 = Sunday, 6 = Saturday)
             if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
                 result.push({
