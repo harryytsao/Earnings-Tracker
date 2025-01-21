@@ -26,7 +26,7 @@ export default function ScrollableDateHeader({ selectedDate, onDateSelect }: Scr
     const dates: DateItem[] = (() => {
         const result: DateItem[] = [];
         let currentDate = new Date();
-        const endDate = new Date(2025, 0, 31);
+        const endDate = new Date(2025, 3, 31);
 
         // Continue until we reach the end date
         while (currentDate <= endDate) {
