@@ -10,28 +10,25 @@ let lastFetchTime = 0;
 async function fetchEarnings() {
   try {
     const today = new Date();
-    console.log("Today's date:", today);
+    // Convert to Eastern Time
+    const options = { timeZone: "America/New_York" };
+    console.log("Today's date (ET):", today.toLocaleString("en-US", options));
     today.setHours(today.getHours() - 9);
     const todayDateString = today.toISOString().split("T")[0];
 
-    // Check if we have data starting from January 1st, 2025
-    const existingData = await prisma.earnings.findFirst({
+    // Check if we already have data for today
+    const todayData = await prisma.earnings.findFirst({
       where: {
-        reportDate: {
-          gte: "2025-01-01",
-        },
-      },
-      orderBy: {
-        reportDate: "desc",
+        reportDate: todayDateString,
       },
     });
 
-    if (existingData) {
-      console.log("Data exists from January 1st, skipping fetch");
+    if (todayData) {
+      console.log("Data already exists for today, skipping fetch");
       const allExistingData = await prisma.earnings.findMany({
         where: {
           reportDate: {
-            gte: "2024-01-01",
+            gte: todayDateString,
           },
         },
         select: {
@@ -50,11 +47,48 @@ async function fetchEarnings() {
       return allExistingData;
     }
 
-    // Create an array of all dates between today and end of January
+    // Check if we have data starting from today
+    const existingData = await prisma.earnings.findFirst({
+      where: {
+        reportDate: {
+          gte: todayDateString,
+        },
+      },
+      orderBy: {
+        reportDate: "desc",
+      },
+    });
+
+    if (existingData) {
+      console.log(`Data exists from ${todayDateString}, skipping fetch`);
+      const allExistingData = await prisma.earnings.findMany({
+        where: {
+          reportDate: {
+            gte: todayDateString,
+          },
+        },
+        select: {
+          symbol: true,
+          companyName: true,
+          reportDate: true,
+          estimatedEps: true,
+          lastYearReportDate: true,
+          time: true,
+          lastYearEps: true,
+          fiscalQuarterEnding: true,
+          marketCap: true,
+          numberOfEstimates: true,
+        },
+      });
+      return allExistingData;
+    }
+
+    // Create an array of all dates between today and 2 months ahead
     const dates = [];
-    const endOfJanuary = new Date(2025, 0, 31); // Month is 0-based, so 0 = January
+    const twoMonthsAhead = new Date(today);
+    twoMonthsAhead.setMonth(today.getMonth() + 4);
     let currentDate = new Date(todayDateString);
-    while (currentDate <= endOfJanuary) {
+    while (currentDate <= twoMonthsAhead) {
       dates.push(currentDate.toISOString().split("T")[0]);
       currentDate.setDate(currentDate.getDate() + 1);
     }
