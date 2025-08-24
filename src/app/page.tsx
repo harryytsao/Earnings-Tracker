@@ -1,190 +1,156 @@
-'use client';
+"use client";
 
-import EarningsTable from '@/components/EarningsTable'
-import { useEffect, useState } from 'react'
-import { Earning } from '@/types/earnings'
-import { signIn, signOut, useSession } from 'next-auth/react';
-import WatchListSideBar from '@/components/WatchListSideBar';
+import { useState, useEffect } from "react";
+import { Earning } from "@/types/earnings";
+import EarningsTable from "@/components/EarningsTable";
+import WatchListSideBar from "@/components/WatchListSideBar";
 
 export default function Home() {
-  const { data: session } = useSession();
-
-  const [state, setState] = useState({
-    earningsData: [] as Earning[],
-    isLoading: true,
-    error: null as string | null,
-  });
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [earningsData, setEarningsData] = useState<Earning[]>([]);
   const [watchedEarnings, setWatchedEarnings] = useState<Earning[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchEarnings = async () => {
-    const maxRetries = 3;
-    const backoffDelay = 1000;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const res = await fetch("/api/fetch-earnings");
-
-        console.log('API Response Status:', res.status);
-
-        if (res.status === 429) {
-          console.log('Rate limited, attempting retry:', attempt + 1);
-          await new Promise(resolve => setTimeout(resolve, backoffDelay * (attempt + 1)));
-          continue;
-        }
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        const { success, data, error } = await res.json();
-
-        console.log('Earnings data count:', data?.length);
-        console.log('Sample earnings:', data?.slice(0, 2));
-
-        if (!success) {
-          throw new Error(error || 'Failed to fetch earnings');
-        }
-
-        setState(prev => ({
-          ...prev,
-          earningsData: data,
-          isLoading: false
-        }));
-        return;
-      } catch (error) {
-        console.error('Fetch error:', error);
-        setState(prev => ({
-          ...prev,
-          error: error instanceof Error ? error.message : "Failed to fetch earnings data",
-          isLoading: false
-        }));
-      }
-    }
-  };
-
+  // Fetch earnings data
   useEffect(() => {
+    const fetchEarnings = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/fetch-earnings");
+
+        if (response.status === 429) {
+          throw new Error(
+            "API rate limit exceeded. Using cached data. Please wait a few minutes before trying again."
+          );
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch earnings data");
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          setEarningsData(result.data);
+          console.log(
+            result.cached ? "Using cached data" : "Fetched fresh data"
+          );
+        } else {
+          throw new Error(result.error || "Failed to fetch earnings");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchEarnings();
   }, []);
 
+  // Fetch watchlist data
   useEffect(() => {
-    if (session?.user) {
-      fetchWatchedEarnings();
-    } else {
-      setWatchedEarnings([]);
-    }
-  }, [session]);
-
-  const fetchWatchedEarnings = async () => {
-    try {
-      const response = await fetch('/api/watchlist');
-      if (!response.ok) throw new Error('Failed to fetch watchlist');
-      const { watchedEarnings: dbWatchedEarnings } = await response.json();
-
-      const fullWatchedEarnings = state.earningsData.filter(earning =>
-        dbWatchedEarnings.some(
-          (watched: any) =>
-            watched.symbol === earning.symbol &&
-            watched.reportDate === earning.reportDate
-        )
-      );
-
-      setWatchedEarnings(fullWatchedEarnings);
-    } catch (error) {
-      console.error('Error fetching watchlist:', error);
-    }
-  };
-
-  const handleAuth = () => {
-    if (session) {
-      signOut();
-    } else {
-      signIn('github');
-    }
-  };
-
-  const handleWatchlistUpdate = async (earning: Earning) => {
-    if (!session) return;
-
-    const isWatched = watchedEarnings.some(
-      e => e.symbol === earning.symbol && e.reportDate === earning.reportDate
-    );
-
-    try {
-      const response = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          earning,
-          action: isWatched ? 'remove' : 'add',
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update watchlist');
-
-      setWatchedEarnings(current => {
-        if (isWatched) {
-          return current.filter(
-            e => !(e.symbol === earning.symbol && e.reportDate === earning.reportDate)
-          );
-        } else {
-          return [...current, earning];
+    const fetchWatchlist = async () => {
+      try {
+        const response = await fetch("/api/watchlist");
+        if (!response.ok) {
+          throw new Error("Failed to fetch watchlist");
         }
+        const result = await response.json();
+        setWatchedEarnings(result.watchedEarnings);
+      } catch (err) {
+        console.error("Error fetching watchlist:", err);
+      }
+    };
+
+    fetchWatchlist();
+  }, []);
+
+  // Handle watchlist updates
+  const handleWatchlistUpdate = async (earning: Earning) => {
+    const isWatched = watchedEarnings.some(
+      (e) => e.symbol === earning.symbol && e.reportDate === earning.reportDate
+    );
+    const action = isWatched ? "remove" : "add";
+
+    try {
+      const response = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ earning, action }),
       });
-    } catch (error) {
-      console.error('Error updating watchlist:', error);
+
+      if (!response.ok) {
+        throw new Error("Failed to update watchlist");
+      }
+
+      const result = await response.json();
+      setWatchedEarnings(result.watchedEarnings);
+    } catch (err) {
+      console.error("Error updating watchlist:", err);
     }
   };
 
-  const renderContent = () => {
-    const { error, isLoading, earningsData } = state;
-
-    if (error) return <p className="text-red-500 mb-4">{error}</p>;
-    if (isLoading) return <p className="text-gray-500">Loading earnings data...</p>;
-    if (earningsData.length === 0) return null;
-
+  if (isLoading) {
     return (
-      <div>
-        <p className="text-sm text-gray-500 mb-2">
-          Showing {earningsData.length} earnings reports
-        </p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading earnings data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Nasdaq Earnings Tracker
+            </h1>
+            <button
+              onClick={() => setIsWatchlistOpen(true)}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Watchlist ({watchedEarnings.length})
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <EarningsTable
           data={earningsData}
           watchedEarnings={watchedEarnings}
           onWatchlistUpdate={handleWatchlistUpdate}
         />
-      </div>
-    );
-  };
-
-  return (
-    <main className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Upcoming Nasdaq Earnings</h1>
-        <div className="space-x-4">
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-          >
-            WatchList ({watchedEarnings.length})
-          </button>
-          <button
-            onClick={handleAuth}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-          >
-            {session ? 'Logout' : 'Login'}
-          </button>
-        </div>
-      </div>
+      </main>
 
       <WatchListSideBar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        isOpen={isWatchlistOpen}
+        onClose={() => setIsWatchlistOpen(false)}
         watchedEarnings={watchedEarnings}
       />
-
-      {renderContent()}
-    </main>
-  )
+    </div>
+  );
 }

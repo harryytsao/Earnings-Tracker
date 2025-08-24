@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { Earning, EarningTime } from "@/types/earnings";
-import { PrismaClient } from "@prisma/client";
 import { headers } from "next/headers";
 
-const prisma = new PrismaClient();
-const RATE_LIMIT_SECONDS = 43200; // 12 hours
+const CACHE_DURATION = 300000; // 5 minutes in milliseconds
+let cachedData: Earning[] | null = null;
 let lastFetchTime = 0;
 
 async function fetchEarnings() {
@@ -15,73 +14,6 @@ async function fetchEarnings() {
     console.log("Today's date (ET):", today.toLocaleString("en-US", options));
     today.setHours(today.getHours() - 9);
     const todayDateString = today.toISOString().split("T")[0];
-
-    // Check if we already have data for today
-    const todayData = await prisma.earnings.findFirst({
-      where: {
-        reportDate: todayDateString,
-      },
-    });
-
-    if (todayData) {
-      console.log("Data already exists for today, skipping fetch");
-      const allExistingData = await prisma.earnings.findMany({
-        where: {
-          reportDate: {
-            gte: todayDateString,
-          },
-        },
-        select: {
-          symbol: true,
-          companyName: true,
-          reportDate: true,
-          estimatedEps: true,
-          lastYearReportDate: true,
-          time: true,
-          lastYearEps: true,
-          fiscalQuarterEnding: true,
-          marketCap: true,
-          numberOfEstimates: true,
-        },
-      });
-      return allExistingData;
-    }
-
-    // Check if we have data starting from today
-    const existingData = await prisma.earnings.findFirst({
-      where: {
-        reportDate: {
-          gte: todayDateString,
-        },
-      },
-      orderBy: {
-        reportDate: "desc",
-      },
-    });
-
-    if (existingData) {
-      console.log(`Data exists from ${todayDateString}, skipping fetch`);
-      const allExistingData = await prisma.earnings.findMany({
-        where: {
-          reportDate: {
-            gte: todayDateString,
-          },
-        },
-        select: {
-          symbol: true,
-          companyName: true,
-          reportDate: true,
-          estimatedEps: true,
-          lastYearReportDate: true,
-          time: true,
-          lastYearEps: true,
-          fiscalQuarterEnding: true,
-          marketCap: true,
-          numberOfEstimates: true,
-        },
-      });
-      return allExistingData;
-    }
 
     // Create an array of all dates between today and 2 months ahead
     const dates = [];
@@ -153,42 +85,6 @@ async function fetchEarnings() {
         numberOfEstimates: row.noOfEsts || null,
       }));
 
-    // Store data in database
-    await Promise.all(
-      formattedData.map(async (earning) => {
-        return prisma.earnings.upsert({
-          where: {
-            symbol_reportDate: {
-              symbol: earning.symbol,
-              reportDate: earning.reportDate,
-            },
-          },
-          update: {
-            companyName: earning.companyName,
-            estimatedEps: earning.estimatedEps,
-            time: earning.time,
-            lastYearReportDate: earning.lastYearReportDate,
-            lastYearEps: earning.lastYearEps,
-            fiscalQuarterEnding: earning.fiscalQuarterEnding,
-            marketCap: earning.marketCap,
-            numberOfEstimates: earning.numberOfEstimates,
-          },
-          create: {
-            symbol: earning.symbol,
-            companyName: earning.companyName,
-            reportDate: earning.reportDate,
-            estimatedEps: earning.estimatedEps,
-            time: earning.time,
-            lastYearReportDate: earning.lastYearReportDate,
-            lastYearEps: earning.lastYearEps,
-            fiscalQuarterEnding: earning.fiscalQuarterEnding,
-            marketCap: earning.marketCap,
-            numberOfEstimates: earning.numberOfEstimates,
-          },
-        });
-      })
-    );
-
     return formattedData;
   } catch (error) {
     console.error("Scraping error:", error);
@@ -198,23 +94,31 @@ async function fetchEarnings() {
 
 export async function GET() {
   try {
-    // Check if enough time has passed since last fetch
+    // Check if we have cached data and it's still fresh
     const now = Date.now();
-    if (now - lastFetchTime < RATE_LIMIT_SECONDS * 1000) {
+    if (cachedData && now - lastFetchTime < CACHE_DURATION) {
+      console.log("Returning cached data");
       return NextResponse.json(
-        { success: false, message: "Rate limit exceeded" },
-        { status: 429 }
+        { success: true, data: cachedData, cached: true },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          },
+        }
       );
     }
 
+    // Fetch fresh data
+    console.log("Fetching fresh data from API");
     lastFetchTime = now;
     const data = await fetchEarnings();
+    cachedData = data; // Cache the data
 
     return NextResponse.json(
-      { success: true, data },
+      { success: true, data, cached: false },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200",
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
       }
     );
@@ -222,7 +126,7 @@ export async function GET() {
     console.error("API error:", error);
 
     const errorMessage =
-      error instanceof Error ? error.message : "Failed to scrape earnings";
+      error instanceof Error ? error.message : "Failed to fetch earnings data";
 
     return NextResponse.json(
       {
